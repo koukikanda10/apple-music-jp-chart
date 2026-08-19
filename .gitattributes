@@ -1,0 +1,7 @@
+# 改行コードをリポジトリ内で LF に統一する。
+# Windows のローカル実行と Linux の GitHub Actions が交互に書き込むため、
+# 揃えておかないと同じ内容でもファイル全体が差分として出てしまう。
+* text=auto eol=lf
+
+# 生JSONは無加工で保持したいので、Git による変換を一切行わない
+*.json -text

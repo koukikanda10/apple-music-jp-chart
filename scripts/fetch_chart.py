@@ -142,9 +142,12 @@ def upsert_table(rows: list[dict], chart_date: str) -> tuple[str, str]:
     merged = kept + [{k: str(v) for k, v in row.items()} for row in rows]
     merged.sort(key=lambda r: (r.get("chart_date", ""), int(r.get("rank", 0))))
 
-    # CSVはExcelで文字化けしないよう BOM 付きUTF-8で書く
+    # CSVはExcelで文字化けしないよう BOM 付きUTF-8で書く。
+    # 改行は LF に固定する（csv の既定は CRLF で、Windows と Linux で差分が出るため）
     with open(csv_path, "w", encoding="utf-8-sig", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            handle, fieldnames=FIELDS, extrasaction="ignore", lineterminator="\n"
+        )
         writer.writeheader()
         for row in merged:
             writer.writerow({field: row.get(field, "") for field in FIELDS})
