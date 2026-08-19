@@ -1,0 +1,46 @@
+name: daily-chart
+
+on:
+  schedule:
+    # cron は UTC 指定。00:00 UTC = 09:00 JST
+    - cron: "0 0 * * *"
+  # Actions タブから手動でも実行できるようにしておく
+  workflow_dispatch:
+
+# GITHUB_TOKEN の既定は読み取りのみ。リポジトリに書き戻すため contents: write を付与する
+permissions:
+  contents: write
+
+# 手動実行と定時実行が重なっても同時に走らせない（push が衝突するため）
+concurrency:
+  group: daily-chart
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリを取得
+        uses: actions/checkout@v4
+
+      - name: Python をセットアップ
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: チャートを取得して保存
+        run: python scripts/fetch_chart.py
+
+      - name: 変更をコミットして push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "変更なし。コミットをスキップします。"
+            exit 0
+          fi
+          git add data
+          git commit -m "chore: chart snapshot $(TZ=Asia/Tokyo date +%F)"
+          # 手動 push と競合した場合に備えて取り込んでから送る
+          git pull --rebase --autostash
+          git push
