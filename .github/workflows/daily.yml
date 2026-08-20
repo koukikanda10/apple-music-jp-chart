@@ -2,10 +2,19 @@ name: daily-chart
 
 on:
   schedule:
-    # cron は UTC 指定。00:00 UTC = 09:00 JST
-    - cron: "0 0 * * *"
+    # cron は UTC 指定。GitHub のスケジュールは遅延だけでなくスキップもされるため、
+    # 1日3回走らせて取りこぼしを防ぐ。2回目以降はその日のデータが既にあれば何もしない。
+    # 毎時00分は混雑して遅延しやすいので 17分 にずらしている。
+    - cron: "17 0 * * *"   # 09:17 JST 本番
+    - cron: "17 6 * * *"   # 15:17 JST 予備1
+    - cron: "17 12 * * *"  # 21:17 JST 予備2
   # Actions タブから手動でも実行できるようにしておく
   workflow_dispatch:
+    inputs:
+      force:
+        description: "その日のデータが既にあっても取得し直す"
+        type: boolean
+        default: false
 
 # GITHUB_TOKEN の既定は読み取りのみ。リポジトリに書き戻すため contents: write を付与する
 permissions:
@@ -28,8 +37,16 @@ jobs:
         with:
           python-version: "3.12"
 
+      # 予備実行がその日のデータを上書きしないよう --skip-if-recorded を付ける。
+      # 手動実行で force を選んだときだけ取得し直す。
       - name: チャートを取得して保存
-        run: python scripts/fetch_chart.py
+        run: |
+          if [ "${{ inputs.force }}" = "true" ]; then
+            echo "force 指定: その日のデータがあっても取得し直します"
+            python scripts/fetch_chart.py
+          else
+            python scripts/fetch_chart.py --skip-if-recorded
+          fi
 
       # 同じ曲の track_id が前日から変わっていたら失敗させる（データが1日分だけならスキップ）
       - name: track_id の安定性をチェック

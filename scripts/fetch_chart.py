@@ -8,6 +8,7 @@
 同じ chart_date の行は書き換えられるので、同日中に何度実行しても結果は同じになる。
 """
 
+import argparse
 import csv
 import json
 import os
@@ -127,6 +128,12 @@ def load_existing_rows(csv_path: str) -> list[dict]:
         return list(csv.DictReader(handle))
 
 
+def is_recorded(chart_date: str) -> bool:
+    """その日のデータが既に data/parsed に入っているか。予備実行の空振り判定に使う。"""
+    csv_path = os.path.join(REPO_ROOT, "data", "parsed", f"{chart_date[:7]}.csv")
+    return any(row.get("chart_date") == chart_date for row in load_existing_rows(csv_path))
+
+
 def upsert_table(rows: list[dict], chart_date: str) -> tuple[str, str]:
     """月次のCSVとJSONLを書き出す。同じ chart_date の既存行は新しい行に置き換える。"""
     month_key = chart_date[:7]
@@ -160,10 +167,22 @@ def upsert_table(rows: list[dict], chart_date: str) -> tuple[str, str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--skip-if-recorded",
+        action="store_true",
+        help="その日のデータが既にあれば取得せず終了する（予備実行用）",
+    )
+    args = parser.parse_args()
+
     now_jst = datetime.now(JST)
     chart_date = now_jst.strftime("%Y-%m-%d")
     fetched_at = now_jst.isoformat(timespec="seconds")
     print(f"chart_date={chart_date} (JST) url={FEED_URL}")
+
+    if args.skip_if_recorded and is_recorded(chart_date):
+        print(f"{chart_date} は記録済みです。取得をスキップします。")
+        return 0
 
     body = fetch()
     rows = parse(body, chart_date, fetched_at)

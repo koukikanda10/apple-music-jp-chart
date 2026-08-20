@@ -15,6 +15,7 @@ import glob
 import os
 import sys
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARSED_DIR = os.path.join(REPO_ROOT, "data", "parsed")
@@ -45,6 +46,26 @@ def pick_dates(rows: list[dict], prev_date: str | None, curr_date: str | None):
     if len(dates) < 2:
         return None
     return dates[-2], dates[-1]
+
+
+def missing_dates(rows: list[dict]) -> list[str]:
+    """記録の最初の日から最後の日までのうち、データが無い日を返す。
+
+    取得が飛んだ日は後から埋められない（APIが過去日を返さない）ので、
+    ここでは失敗にせず警告するだけにしている。
+    """
+    dates = sorted({r.get("chart_date", "") for r in rows} - {""})
+    if len(dates) < 2:
+        return []
+    first = datetime.strptime(dates[0], "%Y-%m-%d").date()
+    last = datetime.strptime(dates[-1], "%Y-%m-%d").date()
+    recorded = set(dates)
+    span = (last - first).days
+    return [
+        day.isoformat()
+        for day in (first + timedelta(days=i) for i in range(span + 1))
+        if day.isoformat() not in recorded
+    ]
 
 
 def index_by_song(rows: list[dict], chart_date: str) -> dict[tuple[str, str], dict]:
@@ -103,10 +124,20 @@ def main() -> int:
         print("データが1日分しかないため、ID比較をスキップします。")
         return EXIT_OK
 
+    gaps = missing_dates(rows)
+    if gaps:
+        shown = ", ".join(gaps[:10]) + (" ..." if len(gaps) > 10 else "")
+        print(f"警告: 取得できていない日が {len(gaps)}日 あります: {shown}", file=sys.stderr)
+
     prev_date, curr_date = selected
     previous = index_by_song(rows, prev_date)
     current = index_by_song(rows, curr_date)
-    print(f"比較: {prev_date} ({len(previous)}曲) → {curr_date} ({len(current)}曲)")
+    gap_note = ""
+    if (
+        datetime.strptime(curr_date, "%Y-%m-%d") - datetime.strptime(prev_date, "%Y-%m-%d")
+    ).days != 1:
+        gap_note = "  ※連日ではありません"
+    print(f"比較: {prev_date} ({len(previous)}曲) → {curr_date} ({len(current)}曲){gap_note}")
 
     findings = find_unstable(previous, current)
     common = len(previous.keys() & current.keys())
