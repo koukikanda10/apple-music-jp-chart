@@ -31,7 +31,14 @@ jobs:
       - name: チャートを取得して保存
         run: python scripts/fetch_chart.py
 
+      # 同じ曲の track_id が前日から変わっていたら失敗させる（データが1日分だけならスキップ）
+      - name: track_id の安定性をチェック
+        run: python scripts/check_id_stability.py
+
+      # チェックが落ちても取得した当日分は残したいので、キャンセル以外では必ず実行する。
+      # ジョブ全体はチェックの失敗により赤のままになる。
       - name: 変更をコミットして push
+        if: ${{ !cancelled() }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
