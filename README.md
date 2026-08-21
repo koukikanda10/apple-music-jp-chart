@@ -150,6 +150,7 @@ python -m unittest discover -s scripts -p "test_*.py"
 |---|---|
 | `scripts/test_song_stats.py` | 曲ごとの指標。在籍区間の境界、同順位タイの日付、空の結果 |
 | `scripts/test_checks.py` | 件数照合と取得ログ。`failed` と `missing` の区別 |
+| `scripts/test_proposals.py` | `proposals/` の書式。節の欠けや書きかけを弾く |
 
 在籍区間については、6日空白は同一区間・7日空白は分割、連続在籍のみ、単日のみ、
 3区間以上に分かれる場合を明示的に押さえている。
@@ -179,6 +180,14 @@ python -m unittest discover -s scripts -p "test_*.py"
 
 Actions タブの「daily-chart」から手動実行も可能。その日のデータを取得し直したい場合は
 `force` にチェックを入れる（既定はオフ＝記録済みなら何もしない）。
+
+## 判断待ちの提案
+
+デザイン・UI・表示仕様で判断が必要になったものは、実装せず [`proposals/`](proposals/) に1件1ファイルで置いてある。
+データ層はこの対象外で、テストが通れば承認なしで進める。
+
+作業ルールは [`CLAUDE.md`](CLAUDE.md) にある。これは Claude Code がこのリポジトリで
+作業するとき自動で読み込む指示ファイルで、ここに書いたルールが毎回適用される。
 
 ## 注意
 
