@@ -21,6 +21,7 @@ import json
 import os
 import sqlite3
 import sys
+import unicodedata
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARSED_DIR = os.path.join(REPO_ROOT, "data", "parsed")
@@ -204,6 +205,31 @@ def find_tracks(connection: sqlite3.Connection, keyword: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+RUN_LABEL = "  在籍区間       : "
+
+
+def display_width(text: str) -> int:
+    """全角を2桁として数えた表示幅。継続行の字下げをラベルの幅に合わせるために使う。"""
+    return sum(2 if unicodedata.east_asian_width(ch) in ("W", "F") else 1 for ch in text)
+
+
+def format_runs(runs: list[dict]) -> list[str]:
+    """在籍区間の表示行を組み立てる。
+
+    在籍区間だけは件数が可変で、行ごとにラベルを繰り返すと別々の指標が並んでいるように
+    読めてしまう。そこでラベルは最初の行だけに置き、2件目以降は値の桁に揃える。
+    区間が1つの曲では見た目が変わらない。詳細は proposals/001。
+    """
+    if not runs:
+        return [f"{RUN_LABEL}-"]
+    indent = " " * display_width(RUN_LABEL)
+    return [
+        f"{RUN_LABEL if index == 0 else indent}"
+        f"{run['start_date']} 〜 {run['end_date']} ({run['days']}日)"
+        for index, run in enumerate(runs)
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("query", nargs="?", help="track_id、または曲名/アーティスト名の一部")
@@ -248,10 +274,8 @@ def main() -> int:
             else "  最高順位       : -"
         )
         print(f"  通算在籍日数   : {result['total_days']}日")
-        if not result["runs"]:
-            print("  在籍区間       : -")
-        for run in result["runs"]:
-            print(f"  在籍区間       : {run['start_date']} 〜 {run['end_date']} ({run['days']}日)")
+        for line in format_runs(result["runs"]):
+            print(line)
     return 0
 
 

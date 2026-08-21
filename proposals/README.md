@@ -20,11 +20,11 @@
 
 | 番号 | 題名 | 状態 |
 |---|---|---|
-| [001](001-song-stats-multiple-runs-display.md) | 在籍区間が複数あるときの表示 | 未決 |
+| [001](001-song-stats-multiple-runs-display.md) | 在籍区間が複数あるときの表示 | 採用（案B） |
 
 ## 書式
 
 `NNN-kebab-case-slug.md`。`NNN` は3桁の連番。[`TEMPLATE.md`](TEMPLATE.md) を写して使う。
 
 必須の節は `## 何に迷ったか` `## 選択肢` `## 推奨案とその理由` `## 保留による影響範囲` の4つ。
-`python scripts/test_proposals.py` で検査される。
+`python scripts/check_proposals.py` で検査される（GitHub 上では `checks` ワークフロー）。

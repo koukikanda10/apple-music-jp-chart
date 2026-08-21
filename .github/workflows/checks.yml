@@ -1,0 +1,43 @@
+# 日次取得とは別のワークフローにしてある。daily-chart が赤い＝データが欠けている、
+# という意味を保つため。ここが赤くてもデータは無事で、直すのはコードか提案の側。
+name: checks
+
+on:
+  schedule:
+    # 毎週日曜 09:17 JST（00:17 UTC）。GitHub の遅延で数時間ずれても実害は無い
+    - cron: "17 0 * * 0"
+  workflow_dispatch:
+  # コードや提案を変えたときは待たずに検査する。data/ だけの変更では動かさないので、
+  # 日次取得のコミットでは起動しない
+  push:
+    paths:
+      - "scripts/**"
+      - "proposals/**"
+      - ".github/workflows/checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  # ジョブを分けておくと、どちらが落ちたかが一覧の時点で分かる
+  tests:
+    name: テスト
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: テストを実行
+        run: python -m unittest discover -s scripts -p "test_*.py" -v
+
+  proposals:
+    name: 提案の書式検査
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: proposals/ の書式を検査
+        run: python scripts/check_proposals.py

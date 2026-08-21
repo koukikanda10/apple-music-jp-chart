@@ -255,6 +255,43 @@ class TestSummary(unittest.TestCase):
         self.assertEqual(len(song_stats.summary(connection, "A", gap_days=6)["runs"]), 2)
 
 
+class TestFormatRuns(unittest.TestCase):
+    """在籍区間の表示。proposals/001 で案Bに決まった書式を固定する。"""
+
+    def test_single_run_keeps_the_label_line(self):
+        lines = song_stats.format_runs([run(0, 2, 3)])
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].startswith(song_stats.RUN_LABEL))
+
+    def test_label_appears_only_on_the_first_line(self):
+        lines = song_stats.format_runs([run(0, 2, 3), run(10, 11, 2), run(19, 19, 1)])
+        self.assertEqual(len(lines), 3)
+        self.assertTrue(lines[0].startswith(song_stats.RUN_LABEL))
+        for line in lines[1:]:
+            self.assertNotIn("在籍区間", line)
+
+    def test_continuation_lines_align_with_the_value(self):
+        """継続行の字下げが、ラベルの表示幅とぴったり一致すること。"""
+        lines = song_stats.format_runs([run(0, 2, 3), run(10, 11, 2)])
+        label_width = song_stats.display_width(song_stats.RUN_LABEL)
+        indent = len(lines[1]) - len(lines[1].lstrip(" "))
+        self.assertEqual(indent, label_width)
+        self.assertEqual(lines[0][len(song_stats.RUN_LABEL) :], lines[0].split(": ", 1)[1])
+
+    def test_values_are_unchanged(self):
+        lines = song_stats.format_runs([run(0, 2, 3), run(10, 11, 2)])
+        self.assertTrue(lines[0].endswith("2026-01-01 〜 2026-01-03 (3日)"))
+        self.assertTrue(lines[1].endswith("2026-01-11 〜 2026-01-12 (2日)"))
+
+    def test_empty_runs_show_a_dash(self):
+        self.assertEqual(song_stats.format_runs([]), [f"{song_stats.RUN_LABEL}-"])
+
+    def test_display_width_counts_fullwidth_as_two(self):
+        self.assertEqual(song_stats.display_width("在籍区間"), 8)
+        self.assertEqual(song_stats.display_width("abc"), 3)
+        self.assertEqual(song_stats.display_width(song_stats.RUN_LABEL), 19)
+
+
 class TestSchema(unittest.TestCase):
     def test_columns_match_the_writer(self):
         """取得側の列定義とずれていないこと。列が増えたらここで気づける。"""
