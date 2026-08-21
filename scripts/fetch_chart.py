@@ -18,6 +18,10 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import fetch_log
+
 COUNTRY = "jp"
 LIMIT = 100  # このAPIの上限。101以上は 504/500 を返す
 FEED_URL = (
@@ -182,13 +186,26 @@ def main() -> int:
 
     if args.skip_if_recorded and is_recorded(chart_date):
         print(f"{chart_date} は記録済みです。取得をスキップします。")
+        fetch_log.record(chart_date, fetch_log.STATUS_SKIPPED, detail="既に記録済み")
         return 0
 
-    body = fetch()
-    rows = parse(body, chart_date, fetched_at)
+    # 失敗も必ず記録する。データが無い日について「取りに行って駄目だった」のか
+    # 「そもそも動かなかった」のかは、試行を残しておかないと後から区別できない。
+    try:
+        body = fetch()
+        rows = parse(body, chart_date, fetched_at)
+        raw_path = write_raw(body, chart_date)
+        csv_path, jsonl_path = upsert_table(rows, chart_date)
+    except Exception as error:
+        fetch_log.record(
+            chart_date,
+            fetch_log.STATUS_FAILED,
+            detail=f"{type(error).__name__}: {error}",
+        )
+        print(f"取得に失敗しました: {error}", file=sys.stderr)
+        return 1
 
-    raw_path = write_raw(body, chart_date)
-    csv_path, jsonl_path = upsert_table(rows, chart_date)
+    fetch_log.record(chart_date, fetch_log.STATUS_OK, item_count=len(rows))
 
     print(f"生JSON  : {os.path.relpath(raw_path, REPO_ROOT)}")
     print(f"CSV     : {os.path.relpath(csv_path, REPO_ROOT)}")

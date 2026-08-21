@@ -55,10 +55,19 @@ jobs:
       - name: track_id の安定性をチェック
         run: python scripts/check_id_stability.py
 
+      # 生JSONを正として、テーブルへの取り込みが欠けていないか照合する
+      - name: 生JSONとテーブルの件数を照合
+        run: python scripts/check_counts.py
+
       # 取得より後に置いているのは、テストが落ちた日でも当日分のデータを取り切るため。
       # 過去日は取得し直せないので、データの確保をテストより優先する。
       - name: テストを実行
-        run: python scripts/test_song_stats.py
+        run: python -m unittest discover -s scripts -p "test_*.py"
+
+      # 取得の成否と欠測日を、ログに残った試行から一覧する（失敗にはしない）
+      - name: 取得状況を表示
+        if: ${{ !cancelled() }}
+        run: python scripts/fetch_log.py
 
       # チェックが落ちても取得した当日分は残したいので、キャンセル以外では必ず実行する。
       # ジョブ全体はチェックの失敗により赤のままになる。
