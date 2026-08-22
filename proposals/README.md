@@ -21,9 +21,12 @@
 | 番号 | 題名 | 状態 |
 |---|---|---|
 | [001](001-song-stats-multiple-runs-display.md) | 在籍区間が複数あるときの表示 | 採用（案B） |
-| [002](002-rank-change-colors.md) | 変動の配色 | 未決 |
-| [003](003-list-density.md) | 一覧の情報密度 | 未決 |
-| [004](004-mobile-folding.md) | 狭い画面での畳み方 | 未決 |
+| [002](002-rank-change-colors.md) | 変動の配色 | 採用（案B） |
+| [003](003-list-density.md) | 一覧の情報密度 | 未決（005待ち） |
+| [004](004-mobile-folding.md) | 狭い画面での畳み方 | 未決（005待ち） |
+| [005](005-site-ground-colors.md) | サイト全体の地の配色 | 未決 |
+
+**読む順序は 005 → 003 → 004。** 地の色が決まらないと、密度も畳み方も判断材料が揃わない。
 
 未決の提案は**プレビューで見比べられる**。`python scripts/build_previews.py` を実行し、
 `site/previews/index.html` を開く。

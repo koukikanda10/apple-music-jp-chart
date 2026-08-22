@@ -62,12 +62,49 @@ PRIORITY_CSS = """
 }
 """
 
+def ground_css(background: str, text: str, border: str, up: str, down: str) -> str:
+    """地・本文・罫線・変動の色をまとめて差し替える。
+
+    骨組みは地を宣言せず端末のテーマに任せているため、上に置く要素の背景
+    （固定した操作列など）も同時に合わせないと、送ったときに透けて見える。
+    """
+    return f"""
+body {{ background: {background}; color: {text}; }}
+.controls {{ background: {background}; border-color: {border}; }}
+th, td, footer, .note {{ border-color: {border}; }}
+[data-kind="up"] {{ color: {up}; }}
+[data-kind="down"] {{ color: {down}; }}
+"""
+
+
+# 案B は端末のテーマに追従するので、明暗の両方を定義する（DP-6.10）
+TINTED_CSS = ground_css("#f6f8fb", "#1a1d21", "#ccd4e0", "#c0392b", "#1a63d8") + (
+    "@media (prefers-color-scheme: dark) {"
+    + ground_css("#11161c", "#e6e9ee", "#2b3542", "#ff7b72", "#79b8ff")
+    + "}"
+)
+
+# 案C は端末の設定によらず暗い地にするため、色相の切り替えを持たない
+DARK_ONLY_CSS = ":root { color-scheme: dark; }" + ground_css(
+    "#0d1117", "#e6edf3", "#222b35", "#ff7b72", "#79b8ff"
+)
+
 PROPOSALS = [
+    {
+        "id": "005",
+        "title": "サイト全体の地の配色",
+        "options": [
+            ("a", "案A 無彩色のまま・端末のテーマに追従（現状）", ""),
+            ("b", "案B 色味のある地・端末のテーマに追従", TINTED_CSS),
+            ("c", "案C 暗い地を既定にする", DARK_ONLY_CSS),
+        ],
+    },
     {
         "id": "002",
         "title": "変動の配色",
         "options": [
-            ("a", "案A 色を使わない（現状）", ""),
+            # 採用後も比較の記録として残すため、地の様式から色を明示的に外す
+            ("a", "案A 色を使わない", "[data-kind] { color: inherit; }"),
             (
                 "b",
                 "案B 上昇=赤 / 下降=青",
