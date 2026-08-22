@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 生成した静的サイト。data/ からいつでも作り直せるので追跡しない。
+# 上の mkdocs 用の /site でも除外されるが、意図が伝わらないので明示しておく
+/site/
