@@ -9,6 +9,7 @@
 """
 
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -240,6 +241,78 @@ class TestPages(unittest.TestCase):
         page = build_site.search_page(build_site.collect(connection))
         self.assertNotIn("</script>x", page)
         self.assertIn("<\\/script>", page)
+
+
+def relative_luminance(hex_color: str) -> float:
+    """WCAG の相対輝度。コントラスト比を出すために使う。"""
+    channels = []
+    for offset in (1, 3, 5):
+        value = int(hex_color[offset : offset + 2], 16) / 255
+        channels.append(
+            value / 12.92 if value <= 0.03928 else ((value + 0.055) / 1.055) ** 2.4
+        )
+    red, green, blue = channels
+    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
+
+
+def contrast(foreground: str, background: str) -> float:
+    lighter, darker = sorted(
+        (relative_luminance(foreground), relative_luminance(background)), reverse=True
+    )
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+class TestDeltaColors(unittest.TestCase):
+    """proposals/002 で案B（上昇=赤 / 下降=青）に決まった配色を固定する。"""
+
+    LIGHT_BACKGROUND = "#ffffff"
+    DARK_BACKGROUND = "#121212"
+
+    def colors(self) -> dict:
+        css = build_site.STYLESHEET
+        light, dark = css.split("prefers-color-scheme: dark")
+        return {
+            "light": dict(re.findall(r'\[data-kind="(\w+)"\] \{ color: (#\w+)', light)),
+            "dark": dict(re.findall(r'\[data-kind="(\w+)"\] \{ color: (#\w+)', dark)),
+        }
+
+    def test_both_themes_define_up_and_down(self):
+        colors = self.colors()
+        for theme in ("light", "dark"):
+            with self.subTest(theme=theme):
+                self.assertIn("up", colors[theme])
+                self.assertIn("down", colors[theme])
+
+    def test_up_is_warmer_than_down(self):
+        """上昇が赤系、下降が青系であること。赤の R 成分が青のそれを上回る。"""
+        for theme, colors in self.colors().items():
+            with self.subTest(theme=theme):
+                up_red = int(colors["up"][1:3], 16)
+                down_red = int(colors["down"][1:3], 16)
+                down_blue = int(colors["down"][5:7], 16)
+                self.assertGreater(up_red, down_red)
+                self.assertGreater(down_blue, down_red)
+
+    def test_contrast_is_sufficient(self):
+        """色を意味づけに使っても、本文として読める濃さを保つこと（DP-5.6）。"""
+        backgrounds = {"light": self.LIGHT_BACKGROUND, "dark": self.DARK_BACKGROUND}
+        for theme, colors in self.colors().items():
+            for kind, value in colors.items():
+                with self.subTest(theme=theme, kind=kind):
+                    self.assertGreaterEqual(contrast(value, backgrounds[theme]), 4.5)
+
+    def test_neutral_kinds_are_not_colored(self):
+        """変動なし・初登場・再登場・ランク外には色を割り当てない（色数を絞る、DP-5.4）。"""
+        colors = self.colors()
+        for kind in ("flat", "debut", "reentry", "out"):
+            with self.subTest(kind=kind):
+                self.assertNotIn(kind, colors["light"])
+
+    def test_sign_survives_without_color(self):
+        """色を外しても方向が分かること（DP-2.4）。"""
+        connection = make_conn({"A": [(CALENDAR[0], 10), (CALENDAR[1], 4)]})
+        page = build_site.list_page(build_site.collect(connection), ["all"], "all", "rank")
+        self.assertIn("+6", page)
 
 
 class TestBuild(unittest.TestCase):

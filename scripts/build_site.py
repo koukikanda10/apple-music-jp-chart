@@ -74,6 +74,15 @@ th, td { padding: 0.375rem 0.5rem; border-bottom: 1px solid; text-align: left; w
 th { text-align: left; font-size: 0.8125rem; }
 /* 数値は下の桁から読み比べるため右揃えにし、桁位置を縦に揃える */
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* 変動の方向。上昇=赤は日本の相場表示の慣習に合わせ、下降は緑ではなく青にして
+   最も区別しにくい赤緑の対を避ける（proposals/002）。色が読めなくても符号で分かる */
+[data-kind="up"] { color: #c0392b; }
+[data-kind="down"] { color: #1f6feb; }
+@media (prefers-color-scheme: dark) {
+  /* 暗い地では同じ色相のままでは沈むため、明度を上げた対に差し替える */
+  [data-kind="up"] { color: #ff7b72; }
+  [data-kind="down"] { color: #79b8ff; }
+}
 .title { white-space: normal; min-width: 12rem; }
 .title span { display: block; font-size: 0.8125rem; }
 .legend { font-size: 0.8125rem; margin: 0.5rem 0 0; }
