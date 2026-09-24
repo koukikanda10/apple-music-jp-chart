@@ -80,6 +80,17 @@ jobs:
           fi
           git add data
           git commit -m "chore: chart snapshot $(TZ=Asia/Tokyo date +%F)"
-          # 手動 push と競合した場合に備えて取り込んでから送る
-          git pull --rebase --autostash
-          git push
+          # 手動 push と競合した場合に備えて取り込んでから送る。
+          # GitHub 側の一時障害で push が弾かれることがあるため数回試す。
+          # 2026-09-24 に remote: Internal Server Error で実際に失敗し、その回の
+          # 記録が失われた。1回目の実行で起きればその日のデータが丸ごと消える。
+          for i in 1 2 3 4 5; do
+            if git pull --rebase --autostash && git push; then
+              echo "push しました（試行 ${i} 回目）"
+              exit 0
+            fi
+            echo "push に失敗しました（試行 ${i} 回目）。${i}0 秒待って再試行します。"
+            sleep $((i * 10))
+          done
+          echo "push に5回失敗しました。この日のデータは次の実行で取得し直されます。" >&2
+          exit 1
