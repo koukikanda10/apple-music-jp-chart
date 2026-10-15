@@ -2,7 +2,8 @@
 """直近2日のスナップショットを比べ、同じ曲なのに track_id が変わっていないか検査する。
 
 name + artist_name が同一なのに track_id が異なる組を「不安定」とみなし、
-1件でも見つかったら exit 1 で終了する。日次ワークフローの取得後ステップから呼ぶ想定。
+1件でも見つかったら exit 1 で終了する。日次ワークフローからは --warn-only 付きで呼び、
+見つけても報告だけにする（daily-chart の赤を「データが欠けた」の意味に限定するため）。
 
 比較対象は data/parsed/*.csv に入っている chart_date のうち新しい2つ。
 月をまたぐと月次ファイルが分かれるため、CSVは全月ぶんまとめて読む。
@@ -112,6 +113,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prev-date", help="比較元の chart_date (既定: 最新から2番目)")
     parser.add_argument("--date", dest="curr_date", help="比較先の chart_date (既定: 最新)")
+    # Apple 側で曲が別の収録盤の ID に付け替わることがあり（2026-10-15 に4曲）、
+    # データは欠けていないのに日次取得が赤くなっていた。日次では知らせるだけにする。
+    parser.add_argument(
+        "--warn-only", action="store_true", help="不一致を見つけても報告だけして exit 0 で終える"
+    )
     args = parser.parse_args()
 
     rows = load_rows()
@@ -156,7 +162,7 @@ def main() -> int:
             f"      {curr_date} rank={finding['curr_rank']:>3} id={','.join(finding['curr_ids'])}",
             file=sys.stderr,
         )
-    return EXIT_UNSTABLE
+    return EXIT_OK if args.warn_only else EXIT_UNSTABLE
 
 
 if __name__ == "__main__":

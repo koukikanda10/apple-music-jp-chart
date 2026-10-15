@@ -54,9 +54,23 @@ jobs:
             python scripts/fetch_chart.py --skip-if-recorded
           fi
 
-      # 同じ曲の track_id が前日から変わっていたら失敗させる（データが1日分だけならスキップ）
+      # 予備実行は同じ2日を比べ直すだけなので、この回で取得した日だけ比べる。
+      # 新しい月のCSVは未追跡で git diff に出ないため status で見る。
+      - name: この回で取得したかを判定
+        id: fetched
+        run: |
+          if [ -n "$(git status --porcelain -- data/parsed)" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "data/parsed に変更なし。ID の比較は取得した回で済んでいます。"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # 同じ曲の track_id が前日から変わっていないか見る（データが1日分だけならスキップ）。
+      # Apple 側の付け替えで起きるもので、データは欠けていないため報告だけにして赤くしない
       - name: track_id の安定性をチェック
-        run: python scripts/check_id_stability.py
+        if: steps.fetched.outputs.changed == 'true'
+        run: python scripts/check_id_stability.py --warn-only
 
       # 生JSONを正として、テーブルへの取り込みが欠けていないか照合する
       - name: 生JSONとテーブルの件数を照合
